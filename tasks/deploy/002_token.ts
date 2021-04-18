@@ -11,7 +11,7 @@ import {
 } from "./config";
 
 interface IResult {
-  ReleaseUBE: string;
+  ReleaseUbe: string;
   UbeToken: string;
 }
 
@@ -20,7 +20,7 @@ export const deployToken: DeployerFn<IResult> = async ({
   deployCreate2,
   getAddresses,
 }) => {
-  const { TimelockTreasury } = getAddresses<DeployersMap, "timelocks">(
+  const { TimelockExecutive } = getAddresses<DeployersMap, "timelocks">(
     "timelocks"
   );
 
@@ -39,8 +39,7 @@ export const deployToken: DeployerFn<IResult> = async ({
   const deployerAddress = await deployer.getAddress();
   log("Deployer address: " + deployerAddress);
 
-  // Deploy Release UBE
-  const releaseUbe = await deployCreate2("ReleaseUBE", {
+  const releaseUbe = await deployCreate2("ReleaseUbe", {
     factory: ReleaseUbe__factory,
     signer: deployer,
     args: [
@@ -55,13 +54,13 @@ export const deployToken: DeployerFn<IResult> = async ({
   });
 
   await doTx(
-    "Transfer tokens to ReleaseUBE",
+    "Transfer tokens to ReleaseUbe",
     ubeToken.contract.transfer(releaseUbe.address, allocReleased)
   );
 
   await doTx(
     `Send ${formatEther(allocLiquidityTreasury)} liquidity tokens to treasury`,
-    ubeToken.contract.transfer(TimelockTreasury, allocLiquidityTreasury)
+    ubeToken.contract.transfer(TimelockExecutive, allocLiquidityTreasury)
   );
 
   await doTx(
@@ -73,7 +72,7 @@ export const deployToken: DeployerFn<IResult> = async ({
   );
 
   return {
-    ReleaseUBE: releaseUbe.address,
+    ReleaseUbe: releaseUbe.address,
     UbeToken: ubeToken.address,
   };
 };

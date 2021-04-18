@@ -4,9 +4,7 @@
   "license": "MIT",
   "description": "🟪🍠 Ubeswap governance contracts",
   "files": [
-    "build/abi/",
-    "build/artifacts/",
-    "build/types/",
+    "build/",
     "contracts/",
     "deployments/",
     "package.json",
@@ -30,9 +28,12 @@
     "celo"
   ],
   "scripts": {
-    "build": "hardhat compile",
+    "build": "hardhat compile && npm run metadata:write",
+    "metadata:write": "hardhat metadata:write --name Timelock && hardhat metadata:write --name ReleaseUbe && hardhat metadata:write --name UbeToken && prettier --write build/metadata/",
     "clean": "rm -fr build/",
     "console": "hardhat console",
+    "deploy:alfajores": "hardhat deploy --network alfajores --step timelocks && hardhat deploy --network alfajores --step token",
+    "deploy:mainnet": "hardhat deploy --network mainnet --step timelocks && hardhat deploy --network mainnet --step token",
     "test": "NODE_ENV=test hardhat test",
     "test:coverage": "NODE_ENV=test node --max-old-space-size=4096 ./node_modules/.bin/hardhat coverage",
     "test:gas": "REPORT_GAS=true yarn test",
@@ -51,7 +52,7 @@
     "@types/chai": "^4.2.16",
     "@types/mocha": "^8.2.2",
     "@types/node": "^14.14.37",
-    "@ubeswap/hardhat-celo": "^0.7.8",
+    "@ubeswap/hardhat-celo": "^0.9.0",
     "@ubeswap/sdk": "^2.1.0",
     "@ubeswap/solidity-create2-deployer": "^0.6.1",
     "chai": "^4.3.4",

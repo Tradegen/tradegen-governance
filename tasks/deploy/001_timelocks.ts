@@ -4,9 +4,8 @@ import { OPERATOR, TWO_DAYS_SECONDS } from "./config";
 
 export const deployTimelocks: DeployerFn<{
   TimelockCeloReserve: string;
-  TimelockCommunityGrowthFund: string;
-  TimelockExecutiveCouncil: string;
-  TimelockTreasury: string;
+  TimelockCommunity: string;
+  TimelockExecutive: string;
 }> = async ({ deployer, deployCreate2 }) => {
   /**
    * Deploys a Timelock contract.
@@ -26,18 +25,19 @@ export const deployTimelocks: DeployerFn<{
   };
 
   // Deploy timelocks
-  const timelockTreasury = await deployTimelock("Treasury");
-  const timelockCommunityGrowthFund = await deployTimelock(
-    "CommunityGrowthFund"
-  );
-  const timelockExecutiveCouncil = await deployTimelock("ExecutiveCouncil");
-  // This timelock will be given to the Celo Reserve.
+
+  // Receives a share of mined tokens. Used to fund community projects.
+  const timelockCommunity = await deployTimelock("Community");
+
+  // Controls most functions of Ubeswap; owner of most important contracts
+  const timelockExecutive = await deployTimelock("Executive");
+
+  // Receives a share of mined tokens. Will be given to the Celo Reserve.
   const timelockCeloReserve = await deployTimelock("CeloReserve");
 
   return {
     TimelockCeloReserve: timelockCeloReserve,
-    TimelockCommunityGrowthFund: timelockCommunityGrowthFund,
-    TimelockExecutiveCouncil: timelockExecutiveCouncil,
-    TimelockTreasury: timelockTreasury,
+    TimelockCommunity: timelockCommunity,
+    TimelockExecutive: timelockExecutive,
   };
 };
