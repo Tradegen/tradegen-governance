@@ -11,10 +11,10 @@ import { parseEther, splitSignature } from "ethers/lib/utils";
 import hre from "hardhat";
 import {
   LinearReleaseToken,
-  ReleaseUbe__factory,
-  UbeToken,
-  UbeToken__factory,
-} from "../build/types/";
+  ReleaseTGEN__factory,
+  TGENToken,
+  TGENToken__factory,
+} from "../build/types";
 
 describe("LinearReleaseToken", () => {
   let wallet: Wallet;
@@ -22,8 +22,8 @@ describe("LinearReleaseToken", () => {
   let other1: Wallet;
   const released: BigNumber = parseEther("10000000");
 
-  let releaseUbe: LinearReleaseToken;
-  let ube: UbeToken;
+  let releaseTgen: LinearReleaseToken;
+  let tgen: TGENToken;
   let start: number;
 
   let other0RU: LinearReleaseToken;
@@ -41,87 +41,87 @@ describe("LinearReleaseToken", () => {
   });
 
   beforeEach(async () => {
-    ube = await new UbeToken__factory(wallet).deploy(wallet.address);
+    tgen = await new TGENToken__factory(wallet).deploy(wallet.address);
 
     start = (await getCurrentTime()) + 60 * 60; // 1 hour from now
 
-    releaseUbe = await new ReleaseUbe__factory(wallet).deploy(
+    releaseTgen = await new ReleaseTGEN__factory(wallet).deploy(
       wallet.address,
-      ube.address,
+      tgen.address,
       released,
       start,
       0,
       start + 52 * 3 * 24 * 7 * 60 * 60 // 3 year release
     );
-    await ube.transfer(releaseUbe.address, released);
+    await tgen.transfer(releaseTgen.address, released);
 
-    other0RU = ReleaseUbe__factory.connect(releaseUbe.address, other0);
-    other1RU = ReleaseUbe__factory.connect(releaseUbe.address, other1);
+    other0RU = ReleaseTGEN__factory.connect(releaseTgen.address, other0);
+    other1RU = ReleaseTGEN__factory.connect(releaseTgen.address, other1);
   });
 
   it("has info", async () => {
-    expect(await releaseUbe.name()).to.equal("Release Ube");
-    expect(await releaseUbe.symbol()).to.equal("rUBE");
-    expect(await releaseUbe.decimals()).to.equal(18);
+    expect(await releaseTgen.name()).to.equal("Release TGEN");
+    expect(await releaseTgen.symbol()).to.equal("rTGEN");
+    expect(await releaseTgen.decimals()).to.equal(18);
   });
 
   describe("#allocate", () => {
     it("works", async () => {
       const alloc = released.div(10);
-      await expect(releaseUbe.allocate([other0.address], [alloc]))
-        .to.emit(releaseUbe, "Allocated")
+      await expect(releaseTgen.allocate([other0.address], [alloc]))
+        .to.emit(releaseTgen, "Allocated")
         .withArgs(other0.address, alloc)
-        .and.to.emit(releaseUbe, "Transfer")
+        .and.to.emit(releaseTgen, "Transfer")
         .withArgs(ZERO, other0.address, alloc);
 
-      const otherRU = ReleaseUbe__factory.connect(releaseUbe.address, other0);
+      const otherRU = ReleaseTGEN__factory.connect(releaseTgen.address, other0);
 
       // delegate to self
-      await UbeToken__factory.connect(ube.address, other0).delegate(
+      await TGENToken__factory.connect(tgen.address, other0).delegate(
         other0.address
       );
       await otherRU.delegate(other0.address);
 
-      expect(await releaseUbe.getCurrentVotes(other0.address)).to.equal(alloc);
-      expect(await releaseUbe.balanceOf(other0.address)).to.equal(alloc);
-      expect(await releaseUbe.lifetimeTotalAllocated(other0.address)).to.equal(
+      expect(await releaseTgen.getCurrentVotes(other0.address)).to.equal(alloc);
+      expect(await releaseTgen.balanceOf(other0.address)).to.equal(alloc);
+      expect(await releaseTgen.lifetimeTotalAllocated(other0.address)).to.equal(
         alloc
       );
-      expect(await ube.getCurrentVotes(other0.address)).to.equal(0);
-      expect(await ube.balanceOf(other0.address)).to.equal(0);
+      expect(await tgen.getCurrentVotes(other0.address)).to.equal(0);
+      expect(await tgen.balanceOf(other0.address)).to.equal(0);
 
       // one week
       await increaseTime(24 * 7 * 60 * 60);
 
       // test that claim works
       await expect(otherRU.claim(), "Claim event not emitted").to.emit(
-        releaseUbe,
+        releaseTgen,
         "Claimed"
       );
-      const currentVotes = await releaseUbe.getCurrentVotes(other0.address);
+      const currentVotes = await releaseTgen.getCurrentVotes(other0.address);
       expect(currentVotes.gt(0)).to.be.true;
 
-      const ubeVotes = await ube.getCurrentVotes(other0.address);
-      expect(ubeVotes, "Ube votes incorrect").to.equal(alloc.sub(currentVotes));
+      const tgenVotes = await tgen.getCurrentVotes(other0.address);
+      expect(tgenVotes, "TGEN votes incorrect").to.equal(alloc.sub(currentVotes));
     });
 
     it("length mismatch", async () => {
       await expect(
-        releaseUbe.allocate([other0.address, other1.address], [123])
+        releaseTgen.allocate([other0.address, other1.address], [123])
       ).to.be.revertedWith("LinearReleaseToken: length mismatch");
     });
 
     it("can allocate multiple times to the same address", async () => {
       const amt = parseEther("1000000");
-      await releaseUbe.allocate([other0.address], [amt]);
-      await releaseUbe.allocate([other0.address], [amt]);
-      expect(await releaseUbe.balanceOf(other0.address)).to.equal(amt.mul(2));
+      await releaseTgen.allocate([other0.address], [amt]);
+      await releaseTgen.allocate([other0.address], [amt]);
+      expect(await releaseTgen.balanceOf(other0.address)).to.equal(amt.mul(2));
     });
 
     it("limit 20", async () => {
       const amt = parseEther("10000");
       await expect(
-        releaseUbe.allocate(
+        releaseTgen.allocate(
           Array(21)
             .fill(null)
             .map(() => other0.address),
@@ -136,28 +136,28 @@ describe("LinearReleaseToken", () => {
 
     it("can allocate to multiple addresses at once", async () => {
       const amt = released.div(10);
-      await releaseUbe.allocate(
+      await releaseTgen.allocate(
         [other0.address, other1.address],
         [amt, amt.mul(2)]
       );
 
-      expect(await releaseUbe.totalVotingPower()).to.equal(amt.mul(3));
-      expect(await releaseUbe.totalSupply()).to.equal(amt.mul(3));
+      expect(await releaseTgen.totalVotingPower()).to.equal(amt.mul(3));
+      expect(await releaseTgen.totalSupply()).to.equal(amt.mul(3));
 
-      expect(await releaseUbe.balanceOf(other0.address)).to.equal(amt);
-      expect(await releaseUbe.balanceOf(other1.address)).to.equal(amt.mul(2));
+      expect(await releaseTgen.balanceOf(other0.address)).to.equal(amt);
+      expect(await releaseTgen.balanceOf(other1.address)).to.equal(amt.mul(2));
     });
 
     it("cannot overallocate", async () => {
-      await releaseUbe.allocate([other0.address], [1]);
-      await releaseUbe.allocate([other0.address], [released.sub(1)]);
+      await releaseTgen.allocate([other0.address], [1]);
+      await releaseTgen.allocate([other0.address], [released.sub(1)]);
       await expect(
-        releaseUbe.allocate([other0.address], [1])
+        releaseTgen.allocate([other0.address], [1])
       ).to.be.revertedWith("LinearReleaseToken::_allocate: overallocated");
     });
 
     it("cannot allocate to zero address", async () => {
-      await expect(releaseUbe.allocate([ZERO], [released])).to.be.revertedWith(
+      await expect(releaseTgen.allocate([ZERO], [released])).to.be.revertedWith(
         "VotingPower::_mintVotes: cannot mint to the zero address"
       );
     });
@@ -167,28 +167,28 @@ describe("LinearReleaseToken", () => {
     let other0RU: LinearReleaseToken;
 
     beforeEach(() => {
-      other0RU = ReleaseUbe__factory.connect(releaseUbe.address, other0);
+      other0RU = ReleaseTGEN__factory.connect(releaseTgen.address, other0);
     });
 
     it("claiming before the start gives 0", async () => {
       const amt = released;
-      await releaseUbe.allocate([other0.address], [amt]);
+      await releaseTgen.allocate([other0.address], [amt]);
       await expect(other0RU.claim())
         .to.not.emit(other0RU, "Claimed")
-        .and.to.not.emit(ube, "Transfer");
+        .and.to.not.emit(tgen, "Transfer");
       expect(await other0RU.totalClaimed(other0.address)).to.equal(0);
     });
 
     it("anyone can claim but will get 0", async () => {
       await expect(other0RU.claim())
         .to.not.emit(other0RU, "Claimed")
-        .and.to.not.emit(ube, "Transfer");
+        .and.to.not.emit(tgen, "Transfer");
     });
 
     it("allows claiming entire time", async () => {
       const amt = released.div(10);
 
-      await releaseUbe.allocate([other0.address], [amt]);
+      await releaseTgen.allocate([other0.address], [amt]);
 
       await increaseTime(
         52 * 4 * 24 * 7 * 60 * 60 // 4 years
@@ -199,7 +199,7 @@ describe("LinearReleaseToken", () => {
       await expect(other0RU.claim())
         .to.emit(other0RU, "Claimed")
         .withArgs(other0.address, amt)
-        .and.to.emit(ube, "Transfer")
+        .and.to.emit(tgen, "Transfer")
         .withArgs(other0RU.address, other0.address, amt);
 
       expect(await other0RU.releasableSupply()).to.equal(released.sub(amt));
@@ -208,7 +208,7 @@ describe("LinearReleaseToken", () => {
     it("allows claiming based on initial date if tokens are released later", async () => {
       const amt = released.div(10);
 
-      await releaseUbe.allocate([other0.address], [amt]);
+      await releaseTgen.allocate([other0.address], [amt]);
       expect(await other0RU.releasableSupply()).to.equal(0);
       await increaseTime(
         52 * 4 * 24 * 7 * 60 * 60 // 4 years
@@ -221,7 +221,7 @@ describe("LinearReleaseToken", () => {
         .withArgs(other0.address, amt);
 
       const amt2 = amt.mul(3);
-      await releaseUbe.allocate([other0.address], [amt2]);
+      await releaseTgen.allocate([other0.address], [amt2]);
 
       expect(await other0RU.totalClaimed(other0.address)).to.equal(amt);
       expect(await other0RU.earned(other0.address)).to.equal(amt2);
@@ -236,22 +236,22 @@ describe("LinearReleaseToken", () => {
     it("claim does not add up to more than the amount", async () => {
       const amt = released.div(10);
 
-      await releaseUbe.allocate([other0.address], [amt]);
+      await releaseTgen.allocate([other0.address], [amt]);
       await increaseTime(
         52 * 1 * 24 * 7 * 60 * 60 // 1 year
       );
 
       // all tokens are unclaimed
-      expect(await releaseUbe.totalSupply()).to.equal(amt);
+      expect(await releaseTgen.totalSupply()).to.equal(amt);
 
       await expect(other0RU.claim())
         .to.emit(other0RU, "Claimed")
-        .and.to.emit(ube, "Transfer");
+        .and.to.emit(tgen, "Transfer");
 
       const totalClaimed = await other0RU.totalClaimed(other0.address);
 
       // claimed tokens should be gone from supply
-      expect(await releaseUbe.totalSupply()).to.equal(amt.sub(totalClaimed));
+      expect(await releaseTgen.totalSupply()).to.equal(amt.sub(totalClaimed));
 
       await increaseTime(
         52 * 1 * 24 * 7 * 60 * 60 // 1 year
@@ -259,12 +259,12 @@ describe("LinearReleaseToken", () => {
 
       await expect(other0RU.claim())
         .to.emit(other0RU, "Claimed")
-        .and.to.emit(ube, "Transfer");
+        .and.to.emit(tgen, "Transfer");
       const nextTotalClaimed = await other0RU.totalClaimed(other0.address);
       expect(nextTotalClaimed.gt(totalClaimed)).to.be.true;
 
       // less unclaimed tokens
-      expect(await releaseUbe.totalSupply()).to.equal(
+      expect(await releaseTgen.totalSupply()).to.equal(
         amt.sub(nextTotalClaimed)
       );
 
@@ -274,10 +274,10 @@ describe("LinearReleaseToken", () => {
 
       await other0RU.claim();
       expect(await other0RU.totalClaimed(other0.address)).to.equal(amt);
-      expect(await ube.balanceOf(other0.address)).to.equal(amt);
+      expect(await tgen.balanceOf(other0.address)).to.equal(amt);
 
       // no more unclaimed tokens
-      expect(await releaseUbe.totalSupply()).to.equal(0);
+      expect(await releaseTgen.totalSupply()).to.equal(0);
     });
   });
 
@@ -287,23 +287,23 @@ describe("LinearReleaseToken", () => {
       await other1RU.delegate(wallet.address);
 
       const amt = released.div(2);
-      await releaseUbe.allocate([other0.address, other1.address], [amt, amt]);
+      await releaseTgen.allocate([other0.address, other1.address], [amt, amt]);
 
       await increaseTime(
         52 * 4 * 24 * 7 * 60 * 60 // 4 years
       );
 
-      expect(await releaseUbe.getCurrentVotes(wallet.address)).to.equal(
+      expect(await releaseTgen.getCurrentVotes(wallet.address)).to.equal(
         released
       );
-      expect(await releaseUbe.getCurrentVotes(other0.address)).to.equal(0);
-      expect(await releaseUbe.getCurrentVotes(other1.address)).to.equal(0);
+      expect(await releaseTgen.getCurrentVotes(other0.address)).to.equal(0);
+      expect(await releaseTgen.getCurrentVotes(other1.address)).to.equal(0);
 
       await other1RU.delegate(other1.address);
 
-      expect(await releaseUbe.getCurrentVotes(wallet.address)).to.equal(amt);
-      expect(await releaseUbe.getCurrentVotes(other0.address)).to.equal(0);
-      expect(await releaseUbe.getCurrentVotes(other1.address)).to.equal(amt);
+      expect(await releaseTgen.getCurrentVotes(wallet.address)).to.equal(amt);
+      expect(await releaseTgen.getCurrentVotes(other0.address)).to.equal(0);
+      expect(await releaseTgen.getCurrentVotes(other1.address)).to.equal(amt);
     });
 
     it("should remove delegations if claimed", async () => {
@@ -311,65 +311,65 @@ describe("LinearReleaseToken", () => {
       await other1RU.delegate(wallet.address);
 
       const amt = released.div(2);
-      await releaseUbe.allocate([other0.address, other1.address], [amt, amt]);
+      await releaseTgen.allocate([other0.address, other1.address], [amt, amt]);
 
-      expect(await releaseUbe.getCurrentVotes(wallet.address)).to.equal(
+      expect(await releaseTgen.getCurrentVotes(wallet.address)).to.equal(
         released
       );
-      expect(await releaseUbe.getCurrentVotes(other0.address)).to.equal(0);
-      expect(await releaseUbe.getCurrentVotes(other1.address)).to.equal(0);
+      expect(await releaseTgen.getCurrentVotes(other0.address)).to.equal(0);
+      expect(await releaseTgen.getCurrentVotes(other1.address)).to.equal(0);
 
       await increaseTime(
         52 * 4 * 24 * 7 * 60 * 60 // 4 years
       );
 
       await other0RU.claim();
-      expect(await ube.balanceOf(other0.address)).to.equal(amt);
-      expect(await releaseUbe.balanceOf(other0.address)).to.equal(0);
+      expect(await tgen.balanceOf(other0.address)).to.equal(amt);
+      expect(await releaseTgen.balanceOf(other0.address)).to.equal(0);
 
-      expect(await releaseUbe.getCurrentVotes(wallet.address)).to.equal(amt);
-      expect(await releaseUbe.getCurrentVotes(other0.address)).to.equal(0);
-      expect(await releaseUbe.getCurrentVotes(other1.address)).to.equal(0);
+      expect(await releaseTgen.getCurrentVotes(wallet.address)).to.equal(amt);
+      expect(await releaseTgen.getCurrentVotes(other0.address)).to.equal(0);
+      expect(await releaseTgen.getCurrentVotes(other1.address)).to.equal(0);
 
-      expect(await ube.getCurrentVotes(wallet.address)).to.equal(0);
+      expect(await tgen.getCurrentVotes(wallet.address)).to.equal(0);
 
       // delegate using UBE instead
-      await UbeToken__factory.connect(ube.address, other0).delegate(
+      await TGENToken__factory.connect(tgen.address, other0).delegate(
         wallet.address
       );
-      expect(await ube.getCurrentVotes(wallet.address)).to.equal(amt);
+      expect(await tgen.getCurrentVotes(wallet.address)).to.equal(amt);
     });
 
     it("nested delegation", async () => {
-      await releaseUbe.allocate(
+      await releaseTgen.allocate(
         [other0.address, other1.address],
         [parseEther("1"), parseEther("2")]
       );
 
-      let currentVotes0 = await releaseUbe.getCurrentVotes(other0.address);
-      let currentVotes1 = await releaseUbe.getCurrentVotes(other1.address);
+      let currentVotes0 = await releaseTgen.getCurrentVotes(other0.address);
+      let currentVotes1 = await releaseTgen.getCurrentVotes(other1.address);
       expect(currentVotes0).to.be.eq(0);
       expect(currentVotes1).to.be.eq(0);
 
-      expect(await releaseUbe.getCurrentVotes(wallet.address)).to.equal(0);
+      expect(await releaseTgen.getCurrentVotes(wallet.address)).to.equal(0);
       await other0RU.delegate(wallet.address);
-      expect(await releaseUbe.getCurrentVotes(wallet.address)).to.equal(
+      expect(await releaseTgen.getCurrentVotes(wallet.address)).to.equal(
         parseEther("1")
       );
 
       await other1RU.delegate(other0.address);
-      expect(await releaseUbe.getCurrentVotes(wallet.address)).to.equal(
+      expect(await releaseTgen.getCurrentVotes(wallet.address)).to.equal(
         parseEther("1")
       );
-      expect(await releaseUbe.getCurrentVotes(other0.address)).to.equal(
+      expect(await releaseTgen.getCurrentVotes(other0.address)).to.equal(
         parseEther("2")
       );
 
       await other0RU.delegate(other0.address);
-      expect(await releaseUbe.getCurrentVotes(wallet.address)).to.equal(
+      expect(await releaseTgen.getCurrentVotes(wallet.address)).to.equal(
         parseEther("0")
       );
-      expect(await releaseUbe.getCurrentVotes(other0.address)).to.equal(
+      expect(await releaseTgen.getCurrentVotes(other0.address)).to.equal(
         parseEther("3")
       );
     });
@@ -380,7 +380,7 @@ describe("LinearReleaseToken", () => {
       const initialNumber = await getCurrentBlockNumber();
 
       const amt = released.div(10);
-      await releaseUbe.allocate([other0.address], [amt]);
+      await releaseTgen.allocate([other0.address], [amt]);
 
       await mineBlock();
       await mineBlock();
@@ -392,30 +392,30 @@ describe("LinearReleaseToken", () => {
         .blockNumber;
       await mineBlock();
 
-      expect(await releaseUbe.getCurrentVotes(other0.address)).to.equal(amt);
+      expect(await releaseTgen.getCurrentVotes(other0.address)).to.equal(amt);
       expect(
-        await releaseUbe.getPriorVotes(other0.address, initialNumber)
+        await releaseTgen.getPriorVotes(other0.address, initialNumber)
       ).to.equal(0);
       expect(
-        await releaseUbe.getPriorVotes(other0.address, nextBlock - 1)
+        await releaseTgen.getPriorVotes(other0.address, nextBlock - 1)
       ).to.equal(0);
       expect(
-        await releaseUbe.getPriorVotes(other0.address, nextBlock)
+        await releaseTgen.getPriorVotes(other0.address, nextBlock)
       ).to.equal(amt);
     });
 
     it("should be preserved when claiming", async () => {
       const initialNumber = await getCurrentBlockNumber();
 
-      expect(await releaseUbe.getCurrentVotes(other0.address)).to.equal(0);
+      expect(await releaseTgen.getCurrentVotes(other0.address)).to.equal(0);
 
       const amt = released.div(10);
       await other0RU.delegate(other0.address);
       const atAllocation = (
-        await (await releaseUbe.allocate([other0.address], [amt])).wait()
+        await (await releaseTgen.allocate([other0.address], [amt])).wait()
       ).blockNumber;
 
-      expect(await releaseUbe.getCurrentVotes(other0.address)).to.equal(amt);
+      expect(await releaseTgen.getCurrentVotes(other0.address)).to.equal(amt);
 
       await mineBlock();
       await mineBlock();
@@ -431,46 +431,46 @@ describe("LinearReleaseToken", () => {
 
       // test all boundary conditions
 
-      expect(await releaseUbe.getCurrentVotes(other0.address)).to.equal(0);
+      expect(await releaseTgen.getCurrentVotes(other0.address)).to.equal(0);
       expect(
-        await releaseUbe.getPriorVotes(other0.address, initialNumber)
+        await releaseTgen.getPriorVotes(other0.address, initialNumber)
       ).to.equal(0);
 
       expect(
-        await releaseUbe.getPriorVotes(other0.address, atAllocation - 1)
+        await releaseTgen.getPriorVotes(other0.address, atAllocation - 1)
       ).to.equal(0);
       expect(
-        await releaseUbe.getPriorVotes(other0.address, atAllocation)
+        await releaseTgen.getPriorVotes(other0.address, atAllocation)
       ).to.equal(amt);
       expect(
-        await releaseUbe.getPriorVotes(other0.address, atAllocation + 1)
+        await releaseTgen.getPriorVotes(other0.address, atAllocation + 1)
       ).to.equal(amt);
 
       expect(
-        await releaseUbe.getPriorVotes(other0.address, nextBlock - 1)
+        await releaseTgen.getPriorVotes(other0.address, nextBlock - 1)
       ).to.equal(amt);
       expect(
-        await releaseUbe.getPriorVotes(other0.address, nextBlock)
+        await releaseTgen.getPriorVotes(other0.address, nextBlock)
       ).to.equal(0);
     });
 
     it("cannot get latest block", async () => {
       const initialNumber = await getCurrentBlockNumber();
       await expect(
-        releaseUbe.getPriorVotes(wallet.address, initialNumber)
-      ).to.be.revertedWith("Uni::getPriorVotes: not yet determined");
+        releaseTgen.getPriorVotes(wallet.address, initialNumber)
+      ).to.be.revertedWith("TGEN::getPriorVotes: not yet determined");
     });
 
     it("no checkpoints == no votes", async () => {
       const initialNumber = await getCurrentBlockNumber();
       expect(
-        await releaseUbe.getPriorVotes(wallet.address, initialNumber - 1)
+        await releaseTgen.getPriorVotes(wallet.address, initialNumber - 1)
       ).to.equal(0);
     });
 
     it("binary search -- binary search find", async () => {
       const amt = released.div(2);
-      await releaseUbe.allocate([other0.address], [amt]);
+      await releaseTgen.allocate([other0.address], [amt]);
 
       await other0RU.delegate(wallet.address);
       await other0RU.delegate(other0.address);
@@ -479,14 +479,14 @@ describe("LinearReleaseToken", () => {
       await other0RU.delegate(other0.address);
       await other0RU.delegate(wallet.address);
 
-      expect(await releaseUbe.getPriorVotes(wallet.address, number)).to.equal(
+      expect(await releaseTgen.getPriorVotes(wallet.address, number)).to.equal(
         amt
       );
     });
 
     it("many checkpoints -- binary search high", async () => {
       const amt = released.div(2);
-      await releaseUbe.allocate([other0.address], [amt]);
+      await releaseTgen.allocate([other0.address], [amt]);
 
       await other0RU.delegate(other1.address);
       await other0RU.delegate(wallet.address);
@@ -496,7 +496,7 @@ describe("LinearReleaseToken", () => {
         .blockNumber;
       await other0RU.delegate(other1.address);
 
-      expect(await releaseUbe.getPriorVotes(wallet.address, number)).to.equal(
+      expect(await releaseTgen.getPriorVotes(wallet.address, number)).to.equal(
         amt
       );
     });
@@ -515,9 +515,9 @@ describe("LinearReleaseToken", () => {
       ): Promise<Signature> => {
         const raw = await wallet._signTypedData(
           {
-            name: "Release Ube",
+            name: "Release TGEN",
             chainId,
-            verifyingContract: releaseUbe.address,
+            verifyingContract: releaseTgen.address,
           },
           {
             Delegation: [
@@ -546,7 +546,7 @@ describe("LinearReleaseToken", () => {
           "0xbad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0",
           "0xbad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0"
         )
-      ).to.be.revertedWith("Uni::delegateBySig: invalid signature");
+      ).to.be.revertedWith("TGEN::delegateBySig: invalid signature");
     });
 
     it("reverts if the nonce is bad", async () => {
@@ -556,7 +556,7 @@ describe("LinearReleaseToken", () => {
       const { v, r, s } = await doSign(other0, { delegatee, nonce, expiry });
       await expect(
         other1RU.delegateBySig(delegatee, nonce, expiry, v, r, s)
-      ).to.be.revertedWith("Uni::delegateBySig: invalid nonce");
+      ).to.be.revertedWith("TGEN::delegateBySig: invalid nonce");
     });
 
     it("reverts if the signature has expired", async () => {
@@ -566,7 +566,7 @@ describe("LinearReleaseToken", () => {
       const { v, r, s } = await doSign(other0, { delegatee, nonce, expiry });
       await expect(
         other1RU.delegateBySig(delegatee, nonce, expiry, v, r, s)
-      ).to.be.revertedWith("Uni::delegateBySig: signature expired");
+      ).to.be.revertedWith("TGEN::delegateBySig: signature expired");
     });
 
     it("delegates on behalf of the signatory", async () => {
@@ -575,17 +575,17 @@ describe("LinearReleaseToken", () => {
         expiry = 10e9;
 
       const amt = released.div(2);
-      await releaseUbe.allocate([other0.address], [amt]);
+      await releaseTgen.allocate([other0.address], [amt]);
 
-      expect(await releaseUbe.getCurrentVotes(wallet.address)).to.equal(0);
+      expect(await releaseTgen.getCurrentVotes(wallet.address)).to.equal(0);
 
       const { v, r, s } = await doSign(other0, { delegatee, nonce, expiry });
       const result = await (
-        await releaseUbe.delegateBySig(delegatee, nonce, expiry, v, r, s)
+        await releaseTgen.delegateBySig(delegatee, nonce, expiry, v, r, s)
       ).wait();
       expect(result.gasUsed.lt(80000));
 
-      expect(await releaseUbe.getCurrentVotes(wallet.address)).to.equal(amt);
+      expect(await releaseTgen.getCurrentVotes(wallet.address)).to.equal(amt);
     });
   });
 });
