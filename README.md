@@ -1,6 +1,6 @@
-# Ubeswap Governance
+# Tradegen Governance
 
-Contracts related to the Ube Governance Token.
+Contracts related to the TGEN Governance Token.
 
 ## License
 
