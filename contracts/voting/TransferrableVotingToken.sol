@@ -82,7 +82,7 @@ contract TransferrableVotingToken is VotingToken {
             // XXX: uint96(-1) => MAX_INT_96
             amount = MAX_INT_96;
         } else {
-            amount = safe96(rawAmount, "Uni::approve: amount exceeds 96 bits");
+            amount = safe96(rawAmount, "TGEN::approve: amount exceeds 96 bits");
         }
 
         allowances[msg.sender][spender] = amount;
@@ -108,7 +108,7 @@ contract TransferrableVotingToken is VotingToken {
             // XXX: uint96(-1) => MAX_INT_oy
             amount = MAX_INT_96;
         } else {
-            amount = safe96(rawAmount, "Uni::permit: amount exceeds 96 bits");
+            amount = safe96(rawAmount, "TGEN::permit: amount exceeds 96 bits");
         }
 
         // XXX_CHANGED: name => name()
@@ -116,11 +116,11 @@ contract TransferrableVotingToken is VotingToken {
         bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, rawAmount, nonces[owner]++, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
         address signatory = ecrecover(digest, v, r, s);
-        require(signatory != address(0), "Uni::permit: invalid signature");
-        require(signatory == owner, "Uni::permit: unauthorized");
+        require(signatory != address(0), "TGEN::permit: invalid signature");
+        require(signatory == owner, "TGEN::permit: unauthorized");
         // XXX: added linter disable
         // solhint-disable-next-line not-rely-on-time
-        require(block.timestamp <= deadline, "Uni::permit: signature expired");
+        require(block.timestamp <= deadline, "TGEN::permit: signature expired");
 
         allowances[owner][spender] = amount;
 
@@ -141,7 +141,7 @@ contract TransferrableVotingToken is VotingToken {
             dst != address(this),
             "TransferrableVotingToken::transfer: cannot send tokens to contract"
         );
-        uint96 amount = safe96(rawAmount, "Uni::transfer: amount exceeds 96 bits");
+        uint96 amount = safe96(rawAmount, "TGEN::transfer: amount exceeds 96 bits");
         _transferTokens(msg.sender, dst, amount);
         return true;
     }
@@ -161,11 +161,11 @@ contract TransferrableVotingToken is VotingToken {
         );
         address spender = msg.sender;
         uint96 spenderAllowance = allowances[src][spender];
-        uint96 amount = safe96(rawAmount, "Uni::approve: amount exceeds 96 bits");
+        uint96 amount = safe96(rawAmount, "TGEN::approve: amount exceeds 96 bits");
 
         // XXX: uint96(-1) => MAX_INT_96
         if (spender != src && spenderAllowance != MAX_INT_96) {
-            uint96 newAllowance = sub96(spenderAllowance, amount, "Uni::transferFrom: transfer amount exceeds spender allowance");
+            uint96 newAllowance = sub96(spenderAllowance, amount, "TGEN::transferFrom: transfer amount exceeds spender allowance");
             allowances[src][spender] = newAllowance;
 
             emit Approval(src, spender, newAllowance);
