@@ -2,7 +2,7 @@
   "name": "@tradegen/governance",
   "version": "1.0.0",
   "license": "MIT",
-  "description": "🟪🍠 Tradegen governance contracts",
+  "description": "Tradegen governance contracts",
   "files": [
     "build/",
     "contracts/",
