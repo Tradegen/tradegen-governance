@@ -1,35 +1,19 @@
-import "@nomiclabs/hardhat-ethers";
-import "@nomiclabs/hardhat-solhint";
-import "@nomiclabs/hardhat-waffle";
-import "@typechain/hardhat";
-import "@ubeswap/hardhat-celo";
-import {
+require("@nomiclabs/hardhat-ethers");
+require("@nomiclabs/hardhat-solhint");
+require("@nomiclabs/hardhat-waffle");
+require("@ubeswap/hardhat-celo");
+const {
   additionalOutputSelection,
   fornoURLs,
   ICeloNetwork,
-} from "@ubeswap/hardhat-celo";
-import "dotenv/config";
-import "hardhat-abi-exporter";
-import "hardhat-gas-reporter";
-import { removeConsoleLog } from "hardhat-preprocessor";
-import "hardhat-spdx-license-identifier";
-import { HardhatUserConfig, task } from "hardhat/config";
-import { ActionType, HDAccountsUserConfig } from "hardhat/types";
-import "solidity-coverage";
+} = require("@ubeswap/hardhat-celo");
+require("dotenv/config");
+require("hardhat-abi-exporter");
+require("hardhat-gas-reporter");
+const { removeConsoleLog } = require("hardhat-preprocessor");
+require("hardhat-spdx-license-identifier");
 
-task("deploy", "Deploys a step", (async (...args) =>
-  (await import("./tasks/deploy")).deploy(...args)) as ActionType<{
-  step: string;
-}>).addParam("step", "The step to deploy");
-
-const accounts: HDAccountsUserConfig = {
-  mnemonic:
-    process.env.MNEMONIC ||
-    "test test test test test test test test test test test junk",
-  path: "m/44'/52752'/0'/0/",
-};
-
-export default {
+module.exports = {
   abiExporter: {
     path: "./build/abi",
     //clear: true,
@@ -37,7 +21,7 @@ export default {
     // only: [],
     // except: []
   },
-  defaultNetwork: "hardhat",
+  defaultNetwork: "alfajores",
   gasReporter: {
     enabled: process.env.REPORT_GAS ? true : false,
     currency: "USD",
@@ -46,7 +30,7 @@ export default {
   networks: {
     mainnet: {
       url: fornoURLs[ICeloNetwork.MAINNET],
-      accounts,
+      accounts: [process.env.PRIVATE_KEY_DEPLOYER],
       chainId: ICeloNetwork.MAINNET,
       live: true,
       gasPrice: 2 * 10 ** 8,
@@ -54,16 +38,16 @@ export default {
     },
     alfajores: {
       url: fornoURLs[ICeloNetwork.ALFAJORES],
-      accounts,
+      accounts: [process.env.PRIVATE_KEY1, process.env.PRIVATE_KEY2],
       chainId: ICeloNetwork.ALFAJORES,
       live: true,
       gasPrice: 2 * 10 ** 8,
       gas: 8000000,
-    },
+    },/*
     hardhat: {
       chainId: 31337,
       accounts,
-    },
+    },*/
   },
   paths: {
     sources: "./contracts",
@@ -101,4 +85,4 @@ export default {
     target: "ethers-v5",
     outDir: "build/types",
   },
-} as HardhatUserConfig;
+};
